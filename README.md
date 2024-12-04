@@ -1,5 +1,7 @@
 # adventofcode2024
 
 ```sh
-bun run src/day01/main.ts
+cd src/day01
+bun run task1.ts
+bun run task2.ts
 ```
