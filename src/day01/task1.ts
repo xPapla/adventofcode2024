@@ -1,4 +1,4 @@
-const input = Bun.file("./input1.txt");
+const input = Bun.file("./input.txt");
 
 const text = await input.text();
 
