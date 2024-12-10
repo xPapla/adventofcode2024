@@ -1,3 +1,5 @@
+const t1 = performance.now();
+
 const input = Bun.file("./input.txt");
 
 const text = await input.text();
@@ -59,6 +61,9 @@ for (const head of trailHeads) {
   move(head, head, 0);
 }
 
+const t2 = performance.now();
+
 console.log(trails);
 console.log(trails.size); // p1
 console.log(count); // p2
+console.log(`${t2 - t1}ms`);
