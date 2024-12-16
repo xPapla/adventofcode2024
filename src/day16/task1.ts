@@ -1,3 +1,4 @@
+console.time("task1");
 const input = Bun.file("./input.txt");
 
 const text = await input.text();
@@ -59,7 +60,7 @@ const queue: QueueItem[] = [
 let lowestScore = Infinity;
 
 while (queue.length > 0) {
-  console.log(`Queue length: ${queue.length}`);
+  // console.log(`Queue length: ${queue.length}`);
   const current = queue.shift();
   if (!current) {
     break;
@@ -79,7 +80,7 @@ while (queue.length > 0) {
   scoreGrid[current.pos.y][current.pos.x] = currentScore;
 
   if (currentChar === "E") {
-    console.log("Found exit", currentScore);
+    // console.log("Found exit", currentScore);
     lowestScore = Math.min(lowestScore, currentScore);
     continue;
   }
@@ -104,3 +105,4 @@ while (queue.length > 0) {
 }
 
 console.log(`Lowest score: ${lowestScore}`);
+console.timeEnd("task1");

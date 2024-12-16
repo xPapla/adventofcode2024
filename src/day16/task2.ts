@@ -1,3 +1,4 @@
+console.time("task2");
 const input = Bun.file("./input.txt");
 
 const text = await input.text();
@@ -66,7 +67,7 @@ const queue: QueueItem[] = [
 let lowestScore = Infinity;
 
 while (queue.length > 0) {
-  console.log(`Queue length: ${queue.length}`);
+  // console.log(`Queue length: ${queue.length}`);
   const current = queue.shift();
   if (!current) {
     break;
@@ -87,7 +88,7 @@ while (queue.length > 0) {
   }
 
   if (currentChar === "E") {
-    console.log("Found exit", currentScore);
+    // console.log("Found exit", currentScore);
     lowestScore = Math.min(lowestScore, currentScore);
     continue;
   }
@@ -130,7 +131,7 @@ while (queue.length > 0) {
 //   )
 //   .join("\n")}`);
 
-console.log(`Lowest score: ${lowestScore}`);
+// console.log(`Lowest score: ${lowestScore}`);
 
 type Queue2Items = {
   pos: Vec2;
@@ -180,3 +181,4 @@ while (queue2.length > 0) {
 }
 
 console.log(`Correct: ${correct.size}`);
+console.timeEnd("task2");
