@@ -17,16 +17,6 @@ const validate = (
   instructions: number[]
 ) => {
   const output: number[] = [];
-  const addToOutput = (value: number) => {
-    output.push(value);
-    // verify as soon as possible
-    const stillValid = output.every((value, index) => {
-      return instructions[index] === value;
-    });
-    if (!stillValid) {
-      throw "INVALID OUTPUT";
-    }
-  };
 
   try {
     let registerA = initRegA;
@@ -85,7 +75,7 @@ const validate = (
         registerB = registerB ^ literal;
       },
       [2 /* bst */]: (combo: number) => {
-        registerB = unwrapComboOperand(combo) % 8;
+        registerB = ((unwrapComboOperand(combo) % 8) + 8) % 8;
       },
       [3 /* jnz */]: (literal: number) => {
         if (registerA !== 0) {
@@ -96,8 +86,8 @@ const validate = (
         registerB = registerB ^ registerC;
       },
       [5 /* out */]: (combo: number) => {
-        const operand = unwrapComboOperand(combo) % 8;
-        addToOutput(operand);
+        const operand = ((unwrapComboOperand(combo) % 8) + 8) % 8;
+        output.push(operand);
       },
       [6 /* bdv */]: (combo: number) => {
         const operand = unwrapComboOperand(combo);
@@ -125,89 +115,137 @@ const validate = (
     }
   } catch (e) {
     if (e === "HALT") {
-      return output.length === instructions.length;
-    }
-    if (e === "INVALID OUTPUT") {
-      return false;
+      return output;
     }
     throw e;
   }
 };
 
-const registerA = parseInt(readLine().split(": ")[1], 10);
+readLine();
+const registerA = 0;
 const registerB = parseInt(readLine().split(": ")[1], 10);
 const registerC = parseInt(readLine().split(": ")[1], 10);
 readLine();
 const instructions = readLine().split(": ")[1].split(",").map(Number);
 
-if (isMainThread) {
-  const MIN = Math.pow(2, 27);
-  const MAX = Math.pow(2, 28); //Number.MAX_SAFE_INTEGER;
-  const numWorkers = 6;
-  const workers: Worker[] = [];
-  const range = Math.ceil((MAX - MIN) / numWorkers);
-  let checked = 0;
-  let lastTimestamp = Date.now();
+// for (let a = start; a < end; a++) {
+// if (validate(a, registerB, registerC, instructions)) {
+// console.log(`Valid register A: ${a} (${workerIndex})`);
+// parentPort?.postMessage(`Valid register A: ${a} (${workerIndex})`);
+// } else {
+// parentPort?.postMessage(`Invalid register A: ${a}`);
+// }
+// }
+const aValues = [
+  //
+  7, 2, 6, 6,
+  //
+  1, 6, 3, 0,
+  //
+  6, 7, 5, 0,
+  //
+  3, 2, 0, 5,
+];
 
-  for (let i = 0; i < numWorkers; i++) {
-    workers.push(
-      new Worker(__filename, {
-        workerData: {
-          workerIndex: i,
-          start: MIN + i * range,
-          end: MIN + (i + 1) * range,
-          registerB,
-          registerC,
-          instructions,
-        },
-      })
-    );
-  }
+const seen = new Map<number, number[]>();
 
-  workers.forEach((worker) => {
-    worker.on("message", (message) => {
-      checked += 1;
-      // last1000timestamps.push(Date.now());
-      // if (last1000timestamps.length > 1000) {
-      //   last1000timestamps.shift();
-      // }
+let lowestIncorrectPair: [number, number[]] | null = null;
 
-      if (message.startsWith("Valid")) {
-        console.log(message);
-        console.log(message);
-        console.log(message);
-        console.log(message);
-        workers.forEach((worker) => {
-          worker.terminate();
-        });
-      }
+const expected = instructions;
 
-      if (checked % 5000 === 0) {
-        const now = Date.now();
-        console.log(
-          `Progress: ${checked}/${MAX - MIN} (${(
-            (checked / (MAX - MIN)) *
-            100
-          ).toFixed(10)}%) Avg. speed: ${(
-            5000 /
-            ((now - lastTimestamp) / 1000)
-          ).toFixed(2)}/s`
-        );
+while (true) {
+  aValues[0] = 0b111;
+  aValues[1] = 0b100;
+  aValues[2] = 0b110;
+  aValues[3] = 0b001;
+  aValues[4] = 0b001;
+  aValues[5] = 0b110;
+  aValues[6] = 0b000;
+  aValues[7] = 0b101;
+  aValues[8] = 0b010;
+  aValues[9] = 0b010;
+  aValues[10] = 0b110;
+  aValues[11] = 0b010;
 
-        lastTimestamp = now;
-      }
-    });
-  });
-} else {
-  const { start, end, registerB, registerC, instructions, workerIndex } =
-    workerData;
+  const a = parseInt(
+    aValues.reduce(
+      (acc, value, index) => `${acc}${value.toString(2).padStart(3, "0")}`,
+      ""
+    ),
+    2
+  );
 
-  for (let a = start; a < end; a++) {
-    if (validate(a, registerB, registerC, instructions)) {
-      console.log(`Valid register A: ${a} (${workerIndex})`);
-      parentPort?.postMessage(`Valid register A: ${a} (${workerIndex})`);
-    } else {
-      parentPort?.postMessage(`Invalid register A: ${a}`);
+  if (seen.has(a)) {
+    const actual = seen.get(a)!;
+    const incorrectIndexes = actual
+      .map((value, index) => (value !== expected[index] ? index : -1))
+      .filter((index) => index !== -1);
+
+    let randomIncorrectIndex =
+      incorrectIndexes[Math.floor(Math.random() * incorrectIndexes.length)];
+
+    if (Math.random() > 0.5) {
+      randomIncorrectIndex = Math.max(
+        0,
+        Math.min(randomIncorrectIndex + Math.floor(Math.random() * 3) - 1, 15)
+      );
     }
+
+    aValues[15 - randomIncorrectIndex] = Math.floor(Math.random() * 8);
+    continue;
   }
+  console.log(a.toString(2));
+
+  const actual = validate(a, registerB, registerC, instructions);
+  const diff = actual
+    .map((num, index) => (num === expected[index] ? " " : "^"))
+    .join(" ");
+
+  console.log(expected.join(","));
+  console.log(actual.join(","));
+  console.log(diff);
+  seen.set(a, actual);
+
+  const brokenCount = expected.reduce(
+    (acc, num, index) => (num === actual[index] ? acc : acc + 1),
+    0
+  );
+  console.log(brokenCount);
+
+  if (lowestIncorrectPair === null || brokenCount < lowestIncorrectPair[0]) {
+    lowestIncorrectPair = [brokenCount, aValues];
+  }
+
+  const modifyIndex = actual.findIndex(
+    (value, index) => value !== expected[index]
+  );
+
+  // if ()
+
+  // if (Math.random() > 0.5) {
+  //   modifyIndex = modifyIndex !== -1 ? modifyIndex + 1 : -1;
+  // } else if (Math.random() > 0.5) {
+  //   modifyIndex = modifyIndex !== -1 ? modifyIndex - 1 : -1;
+  // }
+  // : actual.findLastIndex((value, index) => value !== expected[index]);
+  console.log(modifyIndex);
+  console.log(
+    `${lowestIncorrectPair?.[0]} ${lowestIncorrectPair?.[1].join(",")}`
+  );
+
+  console.log("\n\n");
+
+  if (brokenCount === 0) {
+    break;
+  }
+
+  if (modifyIndex === -1) {
+    break;
+  }
+
+  const oldValue = aValues[15 - modifyIndex];
+  const newValue = (oldValue + 1 + 8) % 8;
+  aValues[15 - modifyIndex] = newValue;
+
+  // seen.add(a);
 }
